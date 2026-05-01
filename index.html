@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>강의실 에너지 낭비 점검</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">순회 점검 앱</p>
+          <h1>강의실 에너지 낭비 기록</h1>
+        </div>
+        <div class="clock" id="clock">--:--</div>
+      </header>
+
+      <section class="panel setup-panel">
+        <div class="observer-field">
+          <span>기록자</span>
+          <div class="segmented observer-options" data-group="observer">
+            <button type="button" data-value="서승희">서승희</button>
+            <button type="button" data-value="김희수">김희수</button>
+            <button type="button" data-value="우혜린">우혜린</button>
+            <button type="button" data-value="안채희">안채희</button>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="primary" id="startPatrol">새 순회 시작</button>
+          <button class="secondary" id="exportCsv">CSV 다운로드</button>
+        </div>
+        <div class="patrol-status">
+          <span>현재 순회</span>
+          <strong id="patrolId">아직 시작 전</strong>
+        </div>
+      </section>
+
+      <section class="panel sheets-panel">
+        <div class="actions">
+          <button class="secondary" id="syncPending" type="button">미전송 기록 보내기</button>
+        </div>
+        <div class="patrol-status">
+          <span>Sheets 상태</span>
+          <strong id="sheetStatus">배포 연결 확인 전</strong>
+        </div>
+      </section>
+
+      <section class="room-grid" aria-label="강의실 선택">
+        <button class="room-card" data-room="365">
+          <span>365호</span>
+          <small id="room365Status">미기록</small>
+        </button>
+        <button class="room-card" data-room="367">
+          <span>367호</span>
+          <small id="room367Status">미기록</small>
+        </button>
+        <button class="room-card" data-room="369">
+          <span>369호</span>
+          <small id="room369Status">미기록</small>
+        </button>
+      </section>
+
+      <form class="panel inspection-form" id="inspectionForm">
+        <div class="form-head">
+          <div>
+            <p class="eyebrow">선택 강의실</p>
+            <h2 id="selectedRoom">강의실을 선택하세요</h2>
+          </div>
+          <div class="badge" id="scheduleBadge">대기</div>
+        </div>
+
+        <section class="auto-info">
+          <div>
+            <span>기록 시간</span>
+            <strong id="recordedAt">-</strong>
+          </div>
+          <div>
+            <span>시간표상 상태</span>
+            <strong id="timetableStatus">-</strong>
+          </div>
+          <div>
+            <span>시간표상 수업명</span>
+            <strong id="courseName">-</strong>
+          </div>
+        </section>
+
+        <section class="question-block">
+          <h3>실제 강의/활동 상태</h3>
+          <div class="segmented" data-group="actualActivity">
+            <button type="button" data-value="lecture">강의 진행 중</button>
+            <button type="button" data-value="not_lecture">강의 아님</button>
+            <button type="button" data-value="event">시험/행사/회의</button>
+            <button type="button" data-value="unknown">확인 불가</button>
+          </div>
+        </section>
+
+        <section class="question-block">
+          <h3>실제 점유 상태</h3>
+          <div class="segmented" data-group="occupancy">
+            <button type="button" data-value="empty">사람 없음</button>
+            <button type="button" data-value="one_to_two">1-2명</button>
+            <button type="button" data-value="three_or_more">3명 이상</button>
+            <button type="button" data-value="unknown">확인 불가</button>
+          </div>
+        </section>
+
+        <section class="question-block exception-block" id="exceptionBlock">
+          <h3>시간표와 실제 이용이 다른 이유</h3>
+          <div class="segmented" data-group="exceptionReason">
+            <button type="button" data-value="early_end">조기 종료</button>
+            <button type="button" data-value="cancelled">휴강</button>
+            <button type="button" data-value="personal_use">개인적 이용</button>
+            <button type="button" data-value="unknown">확인 불가</button>
+          </div>
+        </section>
+
+        <section class="question-block">
+          <h3>전력기기 상태</h3>
+          <div class="device-list">
+            <div class="device-row">
+              <span>조명</span>
+              <div class="segmented compact" data-group="lighting">
+                <button type="button" data-value="off">꺼짐</button>
+                <button type="button" data-value="half_on">0.5 켜짐</button>
+                <button type="button" data-value="on">켜짐</button>
+              </div>
+            </div>
+            <div class="device-row">
+              <span>냉난방기구</span>
+              <div class="segmented compact" data-group="hvac">
+                <button type="button" data-value="off">꺼짐</button>
+                <button type="button" data-value="on">켜짐</button>
+                <button type="button" data-value="unknown">판단 어려움</button>
+              </div>
+            </div>
+            <div class="device-row">
+              <span>컴퓨터</span>
+              <div class="segmented compact" data-group="computer">
+                <button type="button" data-value="off">꺼짐</button>
+                <button type="button" data-value="on">켜짐</button>
+                <button type="button" data-value="unknown">판단 어려움</button>
+              </div>
+            </div>
+            <div class="device-row">
+              <span>스마트 칠판</span>
+              <div class="segmented compact" data-group="smartBoard">
+                <button type="button" data-value="off">꺼짐</button>
+                <button type="button" data-value="on">켜짐</button>
+                <button type="button" data-value="unknown">판단 어려움</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div class="field">
+          <label for="note">메모</label>
+          <textarea id="note" rows="3" placeholder="예: 앞쪽 조명만 켜짐, 컴퓨터 일부만 켜짐"></textarea>
+        </div>
+
+        <div class="form-actions">
+          <button class="primary" type="submit">기록 저장</button>
+          <button class="secondary" type="button" id="resetForm">입력 초기화</button>
+        </div>
+      </form>
+
+      <section class="panel log-panel">
+        <div class="section-head">
+          <h2>최근 기록</h2>
+          <button class="text-button" id="clearLogs">전체 삭제</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>시간</th>
+                <th>강의실</th>
+                <th>시간표</th>
+                <th>실제</th>
+                <th>점유</th>
+                <th>조명</th>
+                <th>냉난방</th>
+                <th>컴퓨터</th>
+                <th>칠판</th>
+                <th>Sheets</th>
+              </tr>
+            </thead>
+            <tbody id="logTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel export-panel" id="exportPanel" hidden>
+        <div class="section-head">
+          <h2>CSV 데이터</h2>
+          <button class="text-button" id="selectCsv" type="button">전체 선택</button>
+        </div>
+        <textarea id="csvOutput" rows="8" readonly></textarea>
+      </section>
+    </main>
+    <script src="./app.js"></script>
+  </body>
+</html>
