@@ -1,8 +1,7 @@
 const { appendInspections } = require("./_sheets");
 
 const allowed = {
-  room: new Set(["365", "367", "369"]),
-  timetable_status: new Set(["in_class", "free", "no_schedule"]),
+  timetable_status: new Set(["class_scheduled", "no_class"]),
   actual_activity: new Set(["lecture", "not_lecture", "event", "unknown"]),
   occupancy_status: new Set(["empty", "one_to_two", "three_or_more", "unknown"]),
   exception_reason: new Set(["early_end", "cancelled", "personal_use", "unknown", "none"]),

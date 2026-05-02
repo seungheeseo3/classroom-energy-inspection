@@ -53,7 +53,7 @@ const schedule = [
 ];
 
 const labels = {
-  timetable: { in_class: "수업중", free: "공강", no_schedule: "시간표 없음" },
+  timetable: { class_scheduled: "수업 있음", no_class: "수업 없음" },
   actualActivity: {
     lecture: "강의 진행 중",
     not_lecture: "강의 아님",
@@ -155,9 +155,9 @@ function currentSchedule(room, date = new Date()) {
   });
 
   if (matched) {
-    return { status: "in_class", course: matched.course, entry: matched };
+    return { status: "class_scheduled", course: matched.course, entry: matched };
   }
-  return { status: entries.length ? "free" : "no_schedule", course: "", entry: null };
+  return { status: "no_class", course: "", entry: null };
 }
 
 function createPatrolId() {
@@ -218,7 +218,7 @@ function renderScheduleInfo() {
   $("#timetableStatus").textContent = labels.timetable[status];
   $("#courseName").textContent = state.selectedSchedule.course || "-";
   $("#scheduleBadge").textContent = labels.timetable[status];
-  $("#scheduleBadge").className = `badge ${status === "in_class" ? "in-class" : "free"}`;
+  $("#scheduleBadge").className = `badge ${status === "class_scheduled" ? "in-class" : "no-class"}`;
   renderExceptionVisibility();
 }
 
@@ -236,8 +236,8 @@ function shouldAskException() {
   const occupancy = state.values.occupancy;
 
   if (!timetable || !activity || !occupancy) return false;
-  if (timetable === "in_class" && activity !== "lecture") return true;
-  if (timetable !== "in_class" && (activity === "lecture" || occupancy !== "empty")) return true;
+  if (timetable === "class_scheduled" && activity !== "lecture") return true;
+  if (timetable === "no_class" && (activity === "lecture" || occupancy !== "empty")) return true;
   return false;
 }
 

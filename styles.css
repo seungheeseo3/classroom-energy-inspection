@@ -277,7 +277,7 @@ textarea:focus {
   color: var(--warn);
 }
 
-.badge.free {
+.badge.no-class {
   background: var(--accent-soft);
   color: var(--accent-dark);
 }
