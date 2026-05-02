@@ -369,7 +369,8 @@ textarea:focus {
 }
 
 .log-panel,
-.export-panel {
+.export-panel,
+.data-panel {
   margin-top: 16px;
   padding: 18px;
 }

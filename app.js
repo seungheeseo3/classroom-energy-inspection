@@ -1,3 +1,7 @@
+const SUPABASE_URL = "https://danyjajyzrlgvjuumlyd.supabase.co";
+const SUPABASE_KEY = "sb_publishable_3-MgKN2LJDHdG1kN-JkGcQ_Krpeb2mv";
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 const rooms = ["365", "367", "369"];
 
 const schedule = [
@@ -108,7 +112,7 @@ const csvColumns = [
   "computer_status_label",
   "smart_board_status",
   "smart_board_status_label",
-  "google_sheet_status",
+  "upload_status",
   "note",
 ];
 
@@ -183,17 +187,17 @@ function renderSheetSettings() {
       ? `로컬 저장 · 미전송 순회 ${pendingCount}회`
       : "로컬 저장";
   } else if (pendingCount) {
-    $("#sheetStatus").textContent = `자동 저장 연결됨 · 미전송 순회 ${pendingCount}회`;
+    $("#sheetStatus").textContent = `서버 연결됨 · 미전송 순회 ${pendingCount}회`;
   } else {
-    $("#sheetStatus").textContent = "자동 저장 연결됨";
+    $("#sheetStatus").textContent = "서버 연결됨";
   }
 }
 
 async function checkSheetConnection() {
   try {
-    const response = await fetch("/api/health", { method: "GET" });
-    state.sheetAvailable = response.ok;
-  } catch (error) {
+    const { error } = await db.from("inspection_logs").select("record_id").limit(1);
+    state.sheetAvailable = !error;
+  } catch {
     state.sheetAvailable = false;
   }
   renderSheetSettings();
@@ -299,7 +303,7 @@ function uploadablePatrolIds() {
     const records = completeRecordsForPatrol(patrolId);
     if (!records.length) return false;
     return records.some((log) =>
-      ["pending", "local_only", "not_connected", "waiting"].includes(log.google_sheet_status),
+      ["pending", "local_only", "waiting"].includes(log.upload_status),
     );
   });
 }
@@ -376,7 +380,7 @@ async function saveLog(event) {
     computer_status_label: labels.devices[state.values.computer],
     smart_board_status: state.values.smartBoard,
     smart_board_status_label: labels.devices[state.values.smartBoard],
-    google_sheet_status: "waiting",
+    upload_status: "waiting",
     note: $("#note").value.trim(),
   };
 
@@ -392,10 +396,10 @@ async function saveLog(event) {
 async function uploadPatrolIfComplete(patrolId) {
   const records = completeRecordsForPatrol(patrolId);
   if (!records.length) return false;
-  if (records.every((record) => record.google_sheet_status === "sent")) return true;
+  if (records.every((record) => record.upload_status === "sent")) return true;
 
   records.forEach((record) => {
-    record.google_sheet_status = state.sheetAvailable ? "pending" : "local_only";
+    record.upload_status = state.sheetAvailable ? "pending" : "local_only";
   });
   localStorage.setItem("inspectionLogs", JSON.stringify(state.logs));
 
@@ -407,20 +411,15 @@ async function sendRecordsToSheet(records) {
   if (!state.sheetAvailable) return false;
 
   try {
-    const response = await fetch("/api/log", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        records: records.map((record) => ({ ...record, google_sheet_status: "sent" })),
-      }),
-    });
-    if (!response.ok) throw new Error("Google Sheets 저장 실패");
+    const rows = records.map((record) => ({ ...record, upload_status: "sent" }));
+    const { error } = await db.from("inspection_logs").insert(rows);
+    if (error) throw error;
     records.forEach((record) => {
-      record.google_sheet_status = "sent";
+      record.upload_status = "sent";
     });
-  } catch (error) {
+  } catch {
     records.forEach((record) => {
-      record.google_sheet_status = "pending";
+      record.upload_status = "pending";
     });
     localStorage.setItem("inspectionLogs", JSON.stringify(state.logs));
     return false;
@@ -433,7 +432,7 @@ async function sendRecordsToSheet(records) {
 async function syncPendingRecords() {
   await checkSheetConnection();
   if (!state.sheetAvailable) {
-    alert("Google Sheets 자동 저장 연결을 확인할 수 없습니다. Vercel 배포 환경변수를 확인해 주세요.");
+    alert("서버 연결을 확인할 수 없습니다.");
     return;
   }
 
@@ -472,14 +471,14 @@ function renderLogs() {
           <td>${log.hvac_status_label}</td>
           <td>${log.computer_status_label}</td>
           <td>${log.smart_board_status_label}</td>
-          <td>${sheetStatusLabel(log.google_sheet_status)}</td>
+          <td>${uploadStatusLabel(log.upload_status)}</td>
         </tr>
       `,
     )
     .join("");
 }
 
-function sheetStatusLabel(status) {
+function uploadStatusLabel(status) {
   if (status === "sent") return "전송";
   if (status === "pending") return "미전송";
   if (status === "local_only") return "로컬";
@@ -518,7 +517,7 @@ function exportCsv() {
 
   const csv = buildCsv();
   showCsvOutput(csv);
-  const blob = new Blob([`\ufeff${csv}`], { type: "text/csv;charset=utf-8" });
+  const blob = new Blob([`﻿${csv}`], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.style.display = "none";
@@ -532,6 +531,58 @@ function exportCsv() {
   }, 1000);
 }
 
+async function loadDataView() {
+  const btn = $("#loadData");
+  btn.textContent = "불러오는 중...";
+  btn.disabled = true;
+
+  try {
+    const { data, error } = await db
+      .from("inspection_logs")
+      .select("*")
+      .order("recorded_at", { ascending: false })
+      .limit(300);
+
+    if (error) throw error;
+    renderDataView(data);
+    $("#dataTableWrap").hidden = false;
+  } catch {
+    alert("데이터를 불러올 수 없습니다. 서버 연결 상태를 확인해 주세요.");
+  } finally {
+    btn.textContent = "불러오기";
+    btn.disabled = false;
+  }
+}
+
+function renderDataView(records) {
+  const table = $("#dataTable");
+  if (!records.length) {
+    table.innerHTML = '<tr><td class="empty-row" colspan="12">저장된 기록이 없습니다.</td></tr>';
+    return;
+  }
+
+  table.innerHTML = records
+    .map(
+      (log) => `
+        <tr>
+          <td>${log.recorded_at.slice(0, 10)}</td>
+          <td>${log.recorded_at.slice(11, 16)}</td>
+          <td>${log.observer}</td>
+          <td>${log.room}</td>
+          <td>${log.timetable_status_label}${log.scheduled_course_name ? `<br><small>${log.scheduled_course_name}</small>` : ""}</td>
+          <td>${log.actual_activity_label}</td>
+          <td>${log.occupancy_status_label}</td>
+          <td>${log.lighting_status_label}</td>
+          <td>${log.hvac_status_label}</td>
+          <td>${log.computer_status_label}</td>
+          <td>${log.smart_board_status_label}</td>
+          <td>${log.note || ""}</td>
+        </tr>
+      `,
+    )
+    .join("");
+}
+
 function bindEvents() {
   $("#startPatrol").addEventListener("click", () => {
     state.patrolId = createPatrolId();
@@ -542,6 +593,7 @@ function bindEvents() {
 
   $("#exportCsv").addEventListener("click", exportCsv);
   $("#syncPending").addEventListener("click", syncPendingRecords);
+  $("#loadData").addEventListener("click", loadDataView);
   $("#selectCsv").addEventListener("click", () => {
     $("#csvOutput").focus();
     $("#csvOutput").select();
@@ -550,7 +602,7 @@ function bindEvents() {
   $("#resetForm").addEventListener("click", () => resetInspection(true));
   $("#clearLogs").addEventListener("click", () => {
     const message =
-      "저장된 기록을 모두 삭제합니다. CSV 데이터 또는 Google Sheets 전송 여부를 먼저 확인했나요?";
+      "저장된 기록을 모두 삭제합니다. CSV 데이터 또는 서버 전송 여부를 먼저 확인했나요?";
     if (!confirm(message)) return;
     if (!confirm("정말 삭제할까요? 이 브라우저에서는 복구할 수 없습니다.")) return;
     state.logs = [];

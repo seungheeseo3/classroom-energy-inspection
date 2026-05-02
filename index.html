@@ -41,7 +41,7 @@
           <button class="secondary" id="syncPending" type="button">미전송 기록 보내기</button>
         </div>
         <div class="patrol-status">
-          <span>Sheets 상태</span>
+          <span>서버 연동 상태</span>
           <strong id="sheetStatus">배포 연결 확인 전</strong>
         </div>
       </section>
@@ -182,7 +182,7 @@
                 <th>냉난방</th>
                 <th>컴퓨터</th>
                 <th>칠판</th>
-                <th>Sheets</th>
+                <th>업로드</th>
               </tr>
             </thead>
             <tbody id="logTable"></tbody>
@@ -197,7 +197,38 @@
         </div>
         <textarea id="csvOutput" rows="8" readonly></textarea>
       </section>
+
+      <section class="panel data-panel">
+        <div class="section-head">
+          <h2>서버 기록 조회</h2>
+          <button class="secondary" id="loadData" type="button">불러오기</button>
+        </div>
+        <div id="dataTableWrap" hidden>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>날짜</th>
+                  <th>시간</th>
+                  <th>기록자</th>
+                  <th>강의실</th>
+                  <th>시간표</th>
+                  <th>실제</th>
+                  <th>점유</th>
+                  <th>조명</th>
+                  <th>냉난방</th>
+                  <th>컴퓨터</th>
+                  <th>칠판</th>
+                  <th>메모</th>
+                </tr>
+              </thead>
+              <tbody id="dataTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
     </main>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="./app.js"></script>
   </body>
 </html>
